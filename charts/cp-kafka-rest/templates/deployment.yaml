@@ -7,7 +7,7 @@ kind: Deployment
 metadata:
   name: {{ template "cp-kafka-rest.fullname" . }}
   labels:
-    app: {{ template "cp-kafka-rest.name" . }}
+    app: {{ template "cp-kafka-rest.fullname" . }}
     chart: {{ template "cp-kafka-rest.chart" . }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
@@ -15,12 +15,12 @@ spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: {{ template "cp-kafka-rest.name" . }}
+      app: {{ template "cp-kafka-rest.fullname" . }}
       release: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app: {{ template "cp-kafka-rest.name" . }}
+        app: {{ template "cp-kafka-rest.fullname" . }}
         release: {{ .Release.Name }}
       {{- if or .Values.podAnnotations .Values.prometheus.jmx.enabled }}
       annotations:
@@ -56,7 +56,7 @@ spec:
           - name: jmx-config
             mountPath: /etc/jmx-kafka-rest
         {{- end }}
-        - name: {{ template "cp-kafka-rest.name" . }}-server
+        - name: {{ template "cp-kafka-rest.fullname" . }}-server
           image: "{{ .Values.image }}:{{ .Values.imageTag }}"
           imagePullPolicy: "{{ .Values.imagePullPolicy }}"
           ports:
