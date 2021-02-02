@@ -6,7 +6,6 @@ metadata:
     release: prom-op
     app: {{ template "cp-kafka-rest.fullname" . }}-servicemonitor
     chart: {{ template "cp-kafka-rest.chart" . }}
-    release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
 spec:
   selector:
@@ -14,8 +13,8 @@ spec:
       app: {{ template "cp-kafka-rest.fullname" . }}
   namespaceSelector:
     matchNames:
-    - data
+    - {{ .Release.Namespace }}
   endpoints:
-  - port: jmx
+  - port: metrics
     interval: 10s
     honorLabels: true

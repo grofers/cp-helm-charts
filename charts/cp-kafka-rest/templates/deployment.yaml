@@ -64,7 +64,7 @@ spec:
           - name: jmx-config
             mountPath: /etc/jmx-kafka-rest
         {{- end }}
-        - name: {{ template "cp-kafka-rest.fullname" . }}-server
+        - name: {{ template "cp-kafka-rest.name" . }}-server
           image: "{{ .Values.image }}:{{ .Values.imageTag }}"
           imagePullPolicy: "{{ .Values.imagePullPolicy }}"
           ports:
