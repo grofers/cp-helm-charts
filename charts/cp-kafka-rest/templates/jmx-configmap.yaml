@@ -19,7 +19,7 @@ data:
     - kafka.rest:type=jersey-metrics
     rules:
     - pattern : 'kafka.rest<type=jetty-metrics>([^:]+):'
-      name: "{{ template "cp-kafka-rest.fullname" . }}_jetty_metrics_$1"
+      name: "cp_kafka_rest_jetty_metrics_$1"
     - pattern : 'kafka.rest<type=jersey-metrics>([^:]+):'
-      name: "{{ template "cp-kafka-rest.fullname" . }}_jersey_metrics_$1"
+      name: "cp_kafka_rest_jersey_metrics_$1"
 {{- end }}
