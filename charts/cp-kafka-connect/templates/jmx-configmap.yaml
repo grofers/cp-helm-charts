@@ -14,11 +14,48 @@ data:
     lowercaseOutputName: true
     lowercaseOutputLabelNames: true
     ssl: false
-    whitelistObjectNames:
-    - kafka.connect:type=connect-worker-metrics
-    - kafka.connect:type=connect-metrics,client-id=*
-    - kafka.connect:type=connector-task-metrics,connector=*,task=*
     rules:
+    - pattern: 'status: running'
+      value: 2
+    - pattern: 'status: paused'
+      value: 1
+    - pattern: 'status: failed'
+      value: 0
+    - pattern: 'status: *'
+      value: 3
+    - pattern: ".*"
+    - pattern : "kafka.connect<type=connect-metrics, client-id=([^:]+)><>([^:]+)"
+      name: "cp_kafka_connect_connect_metrics_$2"
+      labels:
+        client: "$1"
+    - pattern : "kafka.connect<type=connector-task-metrics, connector=([-.\\w]+), task=([-.\\w]+)>([^:]+):"
+      name: "cp_kafka_connect_connector_task_metrics_$3"
+      labels:
+        connector: "$1"
+        task: "$2"
+    - pattern : "kafka.connect<type=source-task-metrics, connector=([-.\\w]+), task=([-.\\w]+)>([^:]+):"
+      name: "cp_kafka_connect_source_task_metrics_$3"
+      labels:
+        connector: "$1"
+        task: "$2"
+    - pattern : "kafka.connect<type=sink-task-metrics, connector=([-.\\w]+), task=([-.\\w]+)>([^:]+):"
+      name: "cp_kafka_connect_sink_task_metrics_$3"
+      labels:
+        connector: "$1"
+        task: "$2"
+    - pattern: "debezium.([^:]+)<type=connector-metrics, context=([^,]+), server=([^,]+), key=([^>]+)><>RowsScanned"
+      name: "cp_kafka_connect_debezium_metrics_RowsScanned"
+      labels:
+        plugin: "$1"
+        name: "$3"
+        context: "$2"
+        table: "$4"
+    - pattern: "debezium.([^:]+)<type=connector-metrics, context=([^,]+), server=([^>]+)>([^:]+)"
+      name: "cp_kafka_connect_debezium_metrics_$4"
+      labels:
+        plugin: "$1"
+        name: "$3"
+        context: "$2"
     - pattern : "kafka.connect<type=connect-worker-metrics>([^:]+):"
       name: "cp_kafka_connect_connect_worker_metrics_$1"
     - pattern : "kafka.connect<type=connect-metrics, client-id=([^:]+)><>([^:]+)"
