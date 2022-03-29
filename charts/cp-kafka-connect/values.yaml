@@ -4,6 +4,9 @@
 
 replicaCount: 1
 
+## Minimum number of servers available to ensure the availability of kafka-connect service
+## minAvailable: 2
+
 ## Image Info
 ## ref: https://hub.docker.com/r/confluentinc/cp-kafka/
 image: confluentinc/cp-kafka-connect
