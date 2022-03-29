@@ -65,8 +65,8 @@ spec:
             mountPath: /etc/jmx-kafka-connect
         {{- end }}
         - name: {{ template "cp-kafka-connect.name" . }}-server
-          {{- if .Values.image.digest }}
-          image: {{ .Values.image.digest }}
+          {{- if .Values.imageDigest }}
+          image: {{ .Values.imageDigest }}
           {{- else }}
           image: "{{ .Values.image }}:{{ .Values.imageTag }}"
           {{- end }}
