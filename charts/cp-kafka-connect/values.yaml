@@ -23,6 +23,15 @@ imagePullSecrets:
 
 servicePort: 8083
 
+## Deployment strategy
+strategy:
+  # type: RollingUpdate
+  # rollingUpdate:
+  #   maxSurge: 1
+  #   maxUnavailable: 1
+
+minReadySeconds: 0
+
 ## Kafka Connect properties
 ## ref: https://docs.confluent.io/current/connect/userguide.html#configuring-workers
 configurationOverrides:
@@ -123,6 +132,18 @@ volumes:
 secrets:
   # username: kafka123
   # password: connect321
+
+## To ensure zero downtime during rolling updates
+readinessProbe:
+  # httpGet:
+  #   path: /connectors
+  #   port: 8083
+  # initialDelaySeconds: 5
+  # periodSeconds: 5
+  # successThreshold: 1
+
+## Blinkit specific labels required for prod deployment
+serviceInventoryLabels: {}
 
 ## These values are used only when "customEnv.CUSTOM_SCRIPT_PATH" is defined.
 ## "livenessProbe" is required only for the edge cases where the custom script to be ran takes too much time

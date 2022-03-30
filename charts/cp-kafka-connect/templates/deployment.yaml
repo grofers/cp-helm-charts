@@ -20,6 +20,11 @@ spec:
     matchLabels:
       app: {{ template "cp-kafka-connect.fullname" . }}
       release: {{ .Release.Name }}
+  {{- if .Values.strategy }}
+  strategy:
+{{ toYaml .Values.strategy | trim | indent 4 }}
+  {{- end }}
+  minReadySeconds: {{ .Values.minReadySeconds }}
   template:
     metadata:
       labels:
@@ -58,6 +63,10 @@ spec:
           - /etc/jmx-kafka-connect/jmx-kafka-connect-prometheus.yml
           ports:
           - containerPort: {{ .Values.prometheus.jmx.port }}
+          {{- if .Values.readinessProbe }}
+          readinessProbe:
+{{ toYaml .Values.readinessProbe | trim | indent 12 }}
+          {{- end }}
           resources:
 {{ toYaml .Values.prometheus.jmx.resources | indent 12 }}
           volumeMounts:
