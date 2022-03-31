@@ -1,0 +1,20 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ template "cp-schema-registry.fullname" . }}-servicemonitor
+  labels:
+    release: prom-op
+    app: {{ template "cp-schema-registry.fullname" . }}-servicemonitor
+    chart: {{ template "cp-schema-registry.chart" . }}
+    heritage: {{ .Release.Service }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ template "cp-schema-registry.fullname" . }}
+  namespaceSelector:
+    matchNames:
+    - {{ .Release.Namespace }}
+  endpoints:
+  - port: metrics
+    interval: 10s
+    honorLabels: true

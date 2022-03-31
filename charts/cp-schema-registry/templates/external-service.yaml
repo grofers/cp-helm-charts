@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ template "cp-kafka-connect.fullname" . }}-external
+  name: {{ template "cp-schema-registry.fullname" . }}-external
   {{- if .Values.external.annotations }}
   annotations:
   {{- range $key, $value := .Values.external.annotations }}
@@ -10,8 +10,8 @@ metadata:
   {{- end }}
   {{- end }}
   labels:
-    app: {{ template "cp-kafka-connect.fullname" . }}
-    chart: {{ template "cp-kafka-connect.chart" . }}
+    app: {{ template "cp-schema-registry.fullname" . }}
+    chart: {{ template "cp-schema-registry.chart" . }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
 spec:
@@ -24,10 +24,10 @@ spec:
   {{- end }}
   {{- end }}
   ports:
-    - name: kafka-connect
+    - name: schema-registry
       port: {{ .Values.external.port }}
       targetPort: {{ .Values.servicePort }}
   selector:
-    app: {{ template "cp-kafka-connect.fullname" . }}
+    app: {{ template "cp-schema-registry.fullname" . }}
     release: {{ .Release.Name }}
 {{- end -}}

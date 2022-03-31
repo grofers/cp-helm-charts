@@ -4,6 +4,9 @@
 
 replicaCount: 1
 
+## Minimum number of servers available to ensure the availability of kafka-connect service
+## minAvailable: 2
+
 ## Image Info
 ## ref: https://hub.docker.com/r/confluentinc/cp-kafka/
 image: confluentinc/cp-kafka-connect
@@ -19,6 +22,15 @@ imagePullPolicy: IfNotPresent
 imagePullSecrets:
 
 servicePort: 8083
+
+## Deployment strategy
+strategy:
+  # type: RollingUpdate
+  # rollingUpdate:
+  #   maxSurge: 1
+  #   maxUnavailable: 1
+
+minReadySeconds: 0
 
 ## Kafka Connect properties
 ## ref: https://docs.confluent.io/current/connect/userguide.html#configuring-workers
@@ -121,10 +133,18 @@ secrets:
   # username: kafka123
   # password: connect321
 
-## These values are used only when "customEnv.CUSTOM_SCRIPT_PATH" is defined.
-## "livenessProbe" is required only for the edge cases where the custom script to be ran takes too much time
-## and errors by the ENTRYPOINT are ignored by the container
-## As an example such a similar script is added to "cp-helm-charts/examples/create-connectors.sh"
+
+## Blinkit specific labels required for prod deployment
+serviceInventoryLabels: {}
+
+## To ensure zero downtime during rolling updates
+startupProbe:
+  # httpGet:
+  #   path: /connectors
+  #   port: 8083
+  # periodSeconds: 10
+  # failureThreshold: 30
+
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 livenessProbe:
   # httpGet:
@@ -133,3 +153,11 @@ livenessProbe:
   # initialDelaySeconds: 30
   # periodSeconds: 5
   # failureThreshold: 10
+
+## External Access
+## ref: https://kubernetes.io/docs/concepts/services-networking/service/#type-loadbalancer
+external:
+  enabled: false
+  type: LoadBalancer
+  externalTrafficPolicy: Cluster
+  port: 8083

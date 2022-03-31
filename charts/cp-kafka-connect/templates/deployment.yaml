@@ -20,6 +20,11 @@ spec:
     matchLabels:
       app: {{ template "cp-kafka-connect.fullname" . }}
       release: {{ .Release.Name }}
+  {{- if .Values.strategy }}
+  strategy:
+{{ toYaml .Values.strategy | trim | indent 4 }}
+  {{- end }}
+  minReadySeconds: {{ .Values.minReadySeconds }}
   template:
     metadata:
       labels:
@@ -65,7 +70,11 @@ spec:
             mountPath: /etc/jmx-kafka-connect
         {{- end }}
         - name: {{ template "cp-kafka-connect.name" . }}-server
-          image: {{ $.Values.image.digest }}
+          {{- if .Values.imageDigest }}
+          image: {{ .Values.imageDigest }}
+          {{- else }}
+          image: "{{ .Values.image }}:{{ .Values.imageTag }}"
+          {{- end }}
           imagePullPolicy: "{{ .Values.imagePullPolicy }}"
           ports:
             - name: kafka-connect
@@ -87,11 +96,11 @@ spec:
             - name: CONNECT_GROUP_ID
               value: {{ template "cp-kafka-connect.groupId" . }}
             - name: CONNECT_CONFIG_STORAGE_TOPIC
-              value: {{ template "cp-kafka-connect.fullname" . }}-config
+              value: {{ template "cp-kafka-connect.ConfigStorageTopic" . }}
             - name: CONNECT_OFFSET_STORAGE_TOPIC
-              value: {{ template "cp-kafka-connect.fullname" . }}-offset
+              value: {{ template "cp-kafka-connect.OffsetStorageTopic" . }}
             - name: CONNECT_STATUS_STORAGE_TOPIC
-              value: {{ template "cp-kafka-connect.fullname" . }}-status
+              value: {{ template "cp-kafka-connect.StatusStorageTopic" . }}
             - name: CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL
               value: {{ template "cp-kafka-connect.cp-schema-registry.service-name" .}}
             - name: CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL
@@ -110,7 +119,7 @@ spec:
             - name: KAFKA_JMX_PORT
               value: "{{ .Values.jmx.port }}"
             {{- end }}
-        {{- if .Values.customEnv.CUSTOM_SCRIPT_PATH }}
+          {{- if .Values.customEnv.CUSTOM_SCRIPT_PATH }}
           command:
             - /bin/bash
             - -c
@@ -118,11 +127,15 @@ spec:
               /etc/confluent/docker/run &
               $CUSTOM_SCRIPT_PATH
               sleep infinity
+          {{- end }}
+          {{- if .Values.startupProbe }}
+          startupProbe:
+{{ toYaml .Values.startupProbe | trim | indent 12 }}
+          {{- end }}
           {{- if .Values.livenessProbe }}
           livenessProbe:
 {{ toYaml .Values.livenessProbe | trim | indent 12 }}
           {{- end }}
-        {{- end }}
           {{- if .Values.volumeMounts }}
           volumeMounts:
 {{ toYaml .Values.volumeMounts | indent 10 }}
