@@ -161,3 +161,111 @@ external:
   type: LoadBalancer
   externalTrafficPolicy: Cluster
   port: 8083
+
+
+## Horizontal Pod Autoscaler (HPA) Configuration
+## This section enables automatic scaling of Kafka Connect pods based on resource utilization
+## and custom metrics. Designed specifically for Kafka Connect workloads with appropriate
+## scaling behaviors to maintain connector stability during scaling operations.
+##
+## Key Considerations for Kafka Connect Scaling:
+## - Connectors undergo rebalancing when pods are added/removed
+## - Conservative scale-down prevents frequent rebalancing
+## - Responsive scale-up handles traffic spikes efficiently
+## - Support for multiple metrics allows complex scaling logic
+autoscaling:
+  # Enable/disable HPA for this deployment
+  enabled: false
+  
+  # Minimum and maximum number of replicas
+  # Set minReplicas to your baseline load requirement
+  # Set maxReplicas based on your resource limits and connector distribution needs
+  minReplicas: 1
+  maxReplicas: 10
+  
+  # Primary scaling metric: CPU utilization percentage (0-100)
+  # Recommended: 70-80% for Kafka Connect to allow headroom for connector rebalancing
+  # Set to null to disable CPU-based scaling
+  targetCPUUtilizationPercentage: 75
+  
+  # Secondary scaling metric: Memory utilization percentage (0-100)  
+  # Usually stable for Kafka Connect, but useful as a safety measure
+  # Set to null to disable memory-based scaling
+  targetMemoryUtilizationPercentage: 85
+  
+  # Scaling behavior configuration optimized for Kafka Connect
+  behavior:
+    scaleDown:
+      # Conservative scale-down to prevent frequent connector rebalancing
+      # Longer stabilization prevents rapid scale-down cycles
+      stabilizationWindowSeconds: 300  # 5 minutes
+      
+      # Pod-based scaling policy (primary)
+      podsPolicy:
+        value: 1  # Scale down 1 pod at a time
+        periodSeconds: 60  # Evaluation period
+      
+      # Percentage-based scaling policy (optional)
+      percentPolicy:
+        enabled: false  # Disabled by default
+        value: 10  # Scale down by 10% at a time
+        periodSeconds: 60
+      
+      # Policy selection: "Min" = most conservative, "Max" = most aggressive
+      selectPolicy: "Min"
+    
+    scaleUp:
+      # Responsive scale-up for handling traffic spikes
+      # Shorter stabilization allows faster response to load increases
+      stabilizationWindowSeconds: 60  # 1 minute
+      
+      # Pod-based scaling policy (primary)
+      podsPolicy:
+        value: 2  # Scale up 2 pods at a time for faster response
+        periodSeconds: 30  # Faster evaluation for scale-up
+      
+      # Percentage-based scaling policy (for large clusters)
+      percentPolicy:
+        enabled: true  # Enabled for large-scale deployments
+        value: 50  # Scale up by 50% for rapid response
+        periodSeconds: 30
+      
+      # Policy selection: "Max" = most aggressive scale-up
+      selectPolicy: "Max"
+  
+  # Optional: Custom annotations for the HPA resource
+  annotations: {}
+    # Example: monitoring.coreos.com/enable: "true"
+  
+  # Advanced: Custom metrics for sophisticated scaling logic
+  # Supports JMX metrics, external metrics, and object-based metrics
+  customMetrics: []
+    # Example configurations:
+    # 
+    # # Scale based on Kafka Connect connector lag (requires custom metrics adapter)
+    # - name: kafka_connect_connector_lag_total
+    #   type: Pods
+    #   targetType: AverageValue
+    #   targetValue: "1000"  # Scale when average lag > 1000 messages
+    #   selector:
+    #     matchLabels:
+    #       app: kafka-connect
+    # 
+    # # Scale based on JMX connector throughput metrics
+    # - name: kafka_connect_connector_task_batch_size_avg
+    #   type: Object
+    #   targetType: Value
+    #   targetValue: "500"
+    #   describedObject:
+    #     apiVersion: v1
+    #     kind: Service
+    #     name: kafka-connect-jmx-metrics
+    #
+    # # Scale based on Kafka consumer lag from external monitoring
+    # - name: kafka_consumer_lag_sum
+    #   type: External
+    #   targetType: Value
+    #   targetValue: "5000"
+    #   selector:
+    #     matchLabels:
+    #       consumer_group: "connect-cluster"
