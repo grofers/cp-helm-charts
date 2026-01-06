@@ -7,21 +7,34 @@ kind: Deployment
 metadata:
   name: {{ template "cp-kafka-connect.fullname" . }}
   labels:
-    app: {{ template "cp-kafka-connect.name" . }}
+    app: {{ template "cp-kafka-connect.fullname" . }}
     chart: {{ template "cp-kafka-connect.chart" . }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
+  {{- range $key, $value := .Values.serviceInventoryLabels }}
+    {{ $key }}: {{ $value | quote }}
+  {{- end }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: {{ template "cp-kafka-connect.name" . }}
+      app: {{ template "cp-kafka-connect.fullname" . }}
       release: {{ .Release.Name }}
+  {{- if .Values.strategy }}
+  strategy:
+{{ toYaml .Values.strategy | trim | indent 4 }}
+  {{- end }}
+  minReadySeconds: {{ .Values.minReadySeconds }}
   template:
     metadata:
       labels:
-        app: {{ template "cp-kafka-connect.name" . }}
+        app: {{ template "cp-kafka-connect.fullname" . }}
         release: {{ .Release.Name }}
+      {{- if .Values.serviceInventoryLabels }}
+      {{- range $key, $value := .Values.serviceInventoryLabels }}
+        {{ $key }}: {{ $value | quote }}
+      {{- end }}
+      {{- end }}
       {{- if or .Values.podAnnotations .Values.prometheus.jmx.enabled }}
       annotations:
       {{- range $key, $value := .Values.podAnnotations }}
@@ -33,6 +46,9 @@ spec:
       {{- end }}
       {{- end }}
     spec:
+      {{- if .Values.serviceAccountName }}
+      serviceAccountName: {{ .Values.serviceAccountName }}
+      {{- end }}
       containers:
         {{- if .Values.prometheus.jmx.enabled }}
         - name: prometheus-jmx-exporter
@@ -57,7 +73,11 @@ spec:
             mountPath: /etc/jmx-kafka-connect
         {{- end }}
         - name: {{ template "cp-kafka-connect.name" . }}-server
+          {{- if .Values.imageDigest }}
+          image: {{ .Values.imageDigest }}
+          {{- else }}
           image: "{{ .Values.image }}:{{ .Values.imageTag }}"
+          {{- end }}
           imagePullPolicy: "{{ .Values.imagePullPolicy }}"
           ports:
             - name: kafka-connect
@@ -79,11 +99,11 @@ spec:
             - name: CONNECT_GROUP_ID
               value: {{ template "cp-kafka-connect.groupId" . }}
             - name: CONNECT_CONFIG_STORAGE_TOPIC
-              value: {{ template "cp-kafka-connect.fullname" . }}-config
+              value: {{ template "cp-kafka-connect.ConfigStorageTopic" . }}
             - name: CONNECT_OFFSET_STORAGE_TOPIC
-              value: {{ template "cp-kafka-connect.fullname" . }}-offset
+              value: {{ template "cp-kafka-connect.OffsetStorageTopic" . }}
             - name: CONNECT_STATUS_STORAGE_TOPIC
-              value: {{ template "cp-kafka-connect.fullname" . }}-status
+              value: {{ template "cp-kafka-connect.StatusStorageTopic" . }}
             - name: CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL
               value: {{ template "cp-kafka-connect.cp-schema-registry.service-name" .}}
             - name: CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL
@@ -102,7 +122,7 @@ spec:
             - name: KAFKA_JMX_PORT
               value: "{{ .Values.jmx.port }}"
             {{- end }}
-        {{- if .Values.customEnv.CUSTOM_SCRIPT_PATH }}
+          {{- if .Values.customEnv.CUSTOM_SCRIPT_PATH }}
           command:
             - /bin/bash
             - -c
@@ -110,11 +130,15 @@ spec:
               /etc/confluent/docker/run &
               $CUSTOM_SCRIPT_PATH
               sleep infinity
+          {{- end }}
+          {{- if .Values.startupProbe }}
+          startupProbe:
+{{ toYaml .Values.startupProbe | trim | indent 12 }}
+          {{- end }}
           {{- if .Values.livenessProbe }}
           livenessProbe:
 {{ toYaml .Values.livenessProbe | trim | indent 12 }}
           {{- end }}
-        {{- end }}
           {{- if .Values.volumeMounts }}
           volumeMounts:
 {{ toYaml .Values.volumeMounts | indent 10 }}
