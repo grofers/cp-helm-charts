@@ -1,0 +1,138 @@
+{{/*
+    HPA (Horizontal Pod Autoscaler) Template for Kafka Connect
+    
+    This template provides comprehensive autoscaling capabilities for Kafka Connect deployments
+    based on CPU utilization, memory usage, and custom metrics. It includes intelligent scaling
+    behaviors to prevent rapid scale-up/down cycles that could affect connector stability.
+    
+    Key Features:
+    - CPU and Memory utilization scaling
+    - Support for custom JMX metrics 
+    - Configurable scaling behaviors with stabilization windows
+    - Kafka Connect-specific scaling policies to maintain connector stability
+    - Support for multiple target metrics with different weights
+*/}}
+{{- if .Values.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ template "cp-kafka-connect.fullname" . }}-hpa
+  labels:
+    app: {{ template "cp-kafka-connect.fullname" . }}
+    chart: {{ template "cp-kafka-connect.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    component: hpa
+  {{- range $key, $value := .Values.serviceInventoryLabels }}
+    {{ $key }}: {{ $value | quote }}
+  {{- end }}
+  {{- if .Values.autoscaling.annotations }}
+  annotations:
+    {{- toYaml .Values.autoscaling.annotations | nindent 4 }}
+  {{- end }}
+spec:
+  # Target deployment for scaling operations
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ template "cp-kafka-connect.fullname" . }}
+  
+  # Replica configuration with safety bounds
+  minReplicas: {{ .Values.autoscaling.minReplicas | default 1 }}
+  maxReplicas: {{ .Values.autoscaling.maxReplicas | default 10 }}
+  
+  # Scaling behavior configuration optimized for Kafka Connect workloads
+  behavior:
+    scaleDown:
+      # Conservative scale-down to prevent connector disruption
+      stabilizationWindowSeconds: {{ .Values.autoscaling.behavior.scaleDown.stabilizationWindowSeconds | default 300 }}
+      policies:
+      - type: Pods
+        # Limit pod reduction to prevent sudden connector rebalancing
+        value: {{ .Values.autoscaling.behavior.scaleDown.podsPolicy.value | default 1 }}
+        periodSeconds: {{ .Values.autoscaling.behavior.scaleDown.podsPolicy.periodSeconds | default 60 }}
+      {{- if .Values.autoscaling.behavior.scaleDown.percentPolicy.enabled }}
+      - type: Percent
+        # Alternative percentage-based scaling policy
+        value: {{ .Values.autoscaling.behavior.scaleDown.percentPolicy.value | default 10 }}
+        periodSeconds: {{ .Values.autoscaling.behavior.scaleDown.percentPolicy.periodSeconds | default 60 }}
+      {{- end }}
+      selectPolicy: {{ .Values.autoscaling.behavior.scaleDown.selectPolicy | default "Min" }}
+    
+    scaleUp:
+      # Responsive scale-up for traffic spikes
+      stabilizationWindowSeconds: {{ .Values.autoscaling.behavior.scaleUp.stabilizationWindowSeconds | default 60 }}
+      policies:
+      - type: Pods
+        # Allow faster scale-up to handle increased load
+        value: {{ .Values.autoscaling.behavior.scaleUp.podsPolicy.value | default 2 }}
+        periodSeconds: {{ .Values.autoscaling.behavior.scaleUp.podsPolicy.periodSeconds | default 30 }}
+      {{- if .Values.autoscaling.behavior.scaleUp.percentPolicy.enabled }}
+      - type: Percent
+        # Percentage-based scale-up for large clusters
+        value: {{ .Values.autoscaling.behavior.scaleUp.percentPolicy.value | default 50 }}
+        periodSeconds: {{ .Values.autoscaling.behavior.scaleUp.percentPolicy.periodSeconds | default 30 }}
+      {{- end }}
+      selectPolicy: {{ .Values.autoscaling.behavior.scaleUp.selectPolicy | default "Max" }}
+  
+  # Metrics configuration supporting multiple scaling triggers
+  metrics:
+  {{- if .Values.autoscaling.targetCPUUtilizationPercentage }}
+  # Primary scaling metric: CPU utilization
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: {{ .Values.autoscaling.targetCPUUtilizationPercentage }}
+  {{- end }}
+  
+  {{- if .Values.autoscaling.targetMemoryUtilizationPercentage }}
+  # Secondary scaling metric: Memory utilization
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: {{ .Values.autoscaling.targetMemoryUtilizationPercentage }}
+  {{- end }}
+  
+  {{- if .Values.autoscaling.customMetrics }}
+  {{- range .Values.autoscaling.customMetrics }}
+  # Custom metrics for advanced scaling scenarios
+  - type: {{ .type | default "Pods" }}
+    {{- if eq .type "Pods" }}
+    pods:
+      metric:
+        name: {{ .name }}
+        {{- if .selector }}
+        selector:
+          {{- toYaml .selector | nindent 10 }}
+        {{- end }}
+      target:
+        type: {{ .targetType | default "AverageValue" }}
+        {{- if .targetValue }}
+        averageValue: {{ .targetValue }}
+        {{- end }}
+        {{- if .targetUtilization }}
+        averageUtilization: {{ .targetUtilization }}
+        {{- end }}
+    {{- else if eq .type "Object" }}
+    object:
+      metric:
+        name: {{ .name }}
+        {{- if .selector }}
+        selector:
+          {{- toYaml .selector | nindent 10 }}
+        {{- end }}
+      describedObject:
+        apiVersion: {{ .describedObject.apiVersion }}
+        kind: {{ .describedObject.kind }}
+        name: {{ .describedObject.name }}
+      target:
+        type: {{ .targetType | default "Value" }}
+        value: {{ .targetValue }}
+    {{- end }}
+  {{- end }}
+  {{- end }}
+{{- end }}
