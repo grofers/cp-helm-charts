@@ -30,6 +30,12 @@ configurationOverrides: {}
 ## Additional env variables
 customEnv: {}
 
+## Optional graceful rollout settings (rendered as-is when set, unset by default)
+## ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
+readinessProbe: {}
+lifecycle: {}
+terminationGracePeriodSeconds:
+
 ## The port on which the Schema Registry will be available and serving requests
 servicePort: 8081
 
